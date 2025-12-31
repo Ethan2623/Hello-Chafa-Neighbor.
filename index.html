@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Hello Chafa Neighbor - Reparado Final</title>
+    <style>
+        body { margin: 0; overflow: hidden; background: #87CEEB; font-family: 'Arial Black', sans-serif; }
+        
+        /* PANTALLA DE INICIO - M�XIMA PRIORIDAD */
+        #capa-inicio {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            display: flex; flex-direction: column; justify-content: center;
+            align-items: center; z-index: 20000; background: rgba(0,0,0,0.8);
+        }
+
+        #btn-jugar {
+            padding: 40px 120px; font-size: 60px; background: #ff0000;
+            color: white; border: 10px solid #fff; cursor: pointer;
+            border-radius: 30px; box-shadow: 0 0 60px #ff0000;
+            text-transform: uppercase;
+        }
+
+        /* MOD MENU */
+        #mod-menu {
+            position: absolute; top: 20px; right: 20px; width: 240px;
+            background: rgba(0,0,0,0.9); border: 3px solid red;
+            color: white; padding: 15px; border-radius: 10px; display: none; z-index: 5000;
+        }
+
+        #safe-alert {
+            position: absolute; top: 20px; width: 100%; text-align: center;
+            color: #44ff44; font-size: 35px; font-weight: bold; text-shadow: 3px 3px #000; z-index: 1000;
+        }
+
+        #instrucciones {
+            position: absolute; bottom: 10px; left: 10px; color: white;
+            background: rgba(0,0,0,0.8); padding: 10px; border-radius: 5px; font-size: 14px; z-index: 1000;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="safe-alert">EST�S A SALVO EN TU CASA</div>
+    
+    <div id="instrucciones">
+        <b>WASD</b>: Caminar | <b>M</b>: Abrir/Cerrar Mods<br>
+        <b>N</b>: Liberar rat�n | <b>CLIC EN PANTALLA</b>: Volver a jugar
+    </div>
+
+    <div id="capa-inicio">
+        <h1 style="color:white; font-size: 40px; text-shadow: 3px 3px #000; margin-bottom: 30px;">HELLO CHAFA NEIGHBOR</h1>
+        <button id="btn-jugar">JUGAR</button>
+    </div>
+
+    <div id="mod-menu">
+        <h3 style="color:red; text-align:center;">PRO MOD MENU</h3>
+        <button onclick="mods.fly = !mods.fly" style="width:100%; margin-bottom:5px; cursor:pointer;">FLY (ON/OFF)</button>
+        <button onclick="mods.inv = !mods.inv" style="width:100%; margin-bottom:5px; cursor:pointer;">INVISIBLE (ON/OFF)</button>
+        <button onclick="camera.position.set(0,5,-50)" style="width:100%; cursor:pointer;">TELEPORT VECINO</button>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+    <script>
+        let scene, camera, renderer, vecino, iniciado = false;
+        let teclas = {};
+        let mods = { fly: false, inv: false, speed: 0.8 };
+
+        // 1. EL BOT�N AHORA ES INFALIBLE
+        document.getElementById('btn-jugar').addEventListener('click', function() {
+            document.getElementById('capa-inicio').style.display = 'none';
+            document.getElementById('mod-menu').style.display = 'block';
+            
+            if (!iniciado) {
+                activarMotorJuego();
+                iniciado = true;
+            }
+            document.body.requestPointerLock();
+        });
+
+        function activarMotorJuego() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x87CEEB);
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 5, 90);
+            camera.rotation.order = 'YXZ';
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            document.body.appendChild(renderer.domElement);
+
+            scene.add(new THREE.AmbientLight(0xffffff, 1));
+            let suelo = new THREE.Mesh(new THREE.PlaneGeometry(1000, 1000), new THREE.MeshLambertMaterial({color: 0x4d7a31}));
+            suelo.rotation.x = -Math.PI/2;
+            scene.add(suelo);
+
+            // Casa Azul
+            let miCasa = new THREE.Mesh(new THREE.BoxGeometry(30, 20, 30), new THREE.MeshBasicMaterial({color: 0x0000ff, wireframe: true}));
+            miCasa.position.set(0, 10, 90);
+            scene.add(miCasa);
+
+            // Casa Roja
+            let casaV = new THREE.Mesh(new THREE.BoxGeometry(40, 50, 40), new THREE.MeshBasicMaterial({color: 0xff0000, wireframe: true}));
+            casaV.position.set(0, 25, -70);
+            scene.add(casaV);
+
+            // Vecino
+            vecino = new THREE.Mesh(new THREE.BoxGeometry(5, 12, 5), new THREE.MeshLambertMaterial({color: 0xff8800}));
+            vecino.position.set(0, 6, -20);
+            scene.add(vecino);
+
+            animate();
+        }
+
+        // 2. TECLA N Y CLIC REPARADOS
+        window.onkeydown = (e) => {
+            teclas[e.code] = true;
+            if(e.code === 'KeyN') document.exitPointerLock();
+            if(e.code === 'KeyM') {
+                let m = document.getElementById('mod-menu');
+                m.style.display = m.style.display === 'none' ? 'block' : 'none';
+            }
+        };
+        window.onkeyup = (e) => teclas[e.code] = false;
+
+        // Clic para bloquear el rat�n despu�s de usar la N
+        document.addEventListener('click', () => {
+            if(iniciado && document.pointerLockElement !== document.body) {
+                document.body.requestPointerLock();
+            }
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (document.pointerLockElement === document.body) {
+                camera.rotation.y -= e.movementX * 0.003;
+                camera.rotation.x -= e.movementY * 0.003;
+                camera.rotation.x = Math.max(-1.5, Math.min(1.5, camera.rotation.x));
+            }
+        });
+
+        function animate() {
+            requestAnimationFrame(animate);
+            if (!iniciado) return;
+
+            if (teclas['KeyW']) camera.translateZ(-mods.speed);
+            if (teclas['KeyS']) camera.translateZ(mods.speed);
+            if (teclas['KeyA']) camera.translateX(-mods.speed);
+            if (teclas['KeyD']) camera.translateX(mods.speed);
+
+            if (mods.fly) {
+                if (teclas['Space']) camera.position.y += 0.5;
+                if (teclas['ShiftLeft']) camera.position.y -= 0.5;
+            } else { camera.position.y = 5; }
+
+            const enCasa = camera.position.z > 70;
+            document.getElementById('safe-alert').innerText = enCasa ? "EST�S A SALVO EN TU CASA" : "�EL VECINO TE BUSCA!";
+            document.getElementById('safe-alert').style.color = enCasa ? "#44ff44" : "#ff4444";
+
+            if (camera.position.z < 65 && !mods.inv) {
+                vecino.lookAt(camera.position.x, 6, camera.position.z);
+                vecino.translateZ(0.35);
+                if (vecino.position.distanceTo(camera.position) < 6) camera.position.set(0, 5, 90);
+            }
+            renderer.render(scene, camera);
+        }
+    </script>
+</body>
+</html>
